@@ -14,7 +14,7 @@ def extract_parkinsons_features(file_path):
         print("extraction began")
         pitch = sound.to_pitch()
 
-        jitter_local = sound.to_jitter(method="local")
+        jitter_local = sound.get_jitter(method="local")
         jitter_absolute = sound.to_jitter(method="absolute")
         jitter_rap = sound.to_jitter(method="rap")
         jitter_ppq5 = sound.to_jitter(method="ppq5")
