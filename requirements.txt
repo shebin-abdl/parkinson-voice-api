@@ -1,4 +1,7 @@
-Flask
-numpy
+Flask~=3.1.0
+numpy~=2.2.2
 praat-parselmouth
 gunicorn
+subprocess
+os
+mimetypes

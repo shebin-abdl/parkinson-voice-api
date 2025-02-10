@@ -1,9 +1,12 @@
+import mimetypes
 from flask import Flask, request, jsonify
 import parselmouth
 import numpy as np
 import os
+import subprocess
 
 app = Flask(__name__)
+
 
 def extract_parkinsons_features(file_path):
     try:
@@ -51,8 +54,11 @@ def extract_parkinsons_features(file_path):
     except Exception as e:
         return {"error": str(e)}
 
+
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ✅ Create uploads folder if not exists
+
+
 @app.route("/extract", methods=["POST"])
 def extract():
     if "file" not in request.files:
@@ -61,16 +67,40 @@ def extract():
     file = request.files["file"]
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
-    print("Received file:", file.filename, "MIME Type:", file.mimetype)
+
+    # Get MIME type and file extension
+    mime_type, _ = mimetypes.guess_type(file_path)
+    file_extension = os.path.splitext(file_path)[1].lower()
+
+    # If the file is not WAV, return an error with the detected MIME type
+    if file_extension not in [".wav", ".mp3", ".m4a", ".3gp"]:
+        return jsonify({
+            "error": "Unsupported file format",
+            "filename": file.filename,
+            "detected_mime": mime_type or "Unknown",
+            "file_extension": file_extension
+        }), 400
+
+    wav_path = os.path.splitext(file_path)[0] + ".wav"
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", file_path, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", wav_path],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"FFmpeg conversion failed: {e.stderr.decode()}"}), 500
 
     if not file.filename.endswith(".wav"):
         return jsonify({"error": "Only WAV files are supported"}), 400
 
-
-    features = extract_parkinsons_features(file_path)
-    os.remove(file_path)  # Delete file after processing
+    features = extract_parkinsons_features(wav_path)
+    os.remove(file_path)
+    os.remove(wav_path)  # Delete file after processing
 
     return jsonify(features)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
