@@ -1,4 +1,4 @@
-Flask~=3.1.0
-numpy~=2.2.2
+Flask
+numpy
 gunicorn
 librosa
