@@ -3,24 +3,15 @@ from flask import Flask, request, jsonify
 import librosa
 import numpy as np
 import os
-import subprocess
 
 app = Flask(__name__)
 
 
 def extract_parkinsons_features_librosa(file_path):
-    """
-    Extracts voice features matching Parkinson's dataset using Librosa.
 
-    Args:
-    - file_path (str): Path to the audio file.
-
-    Returns:
-    - dict: Extracted features including Jitter, Shimmer, HNR, NHR, RPDE, DFA, and PPE.
-    """
     try:
         # Load audio file
-        y, sr = librosa.load(file_path, sr=22050)
+        y, sr = librosa.load(file_path, sr=16000)
 
         # Compute fundamental frequency (f0) (Needed for Jitter Calculation)
         f0, voiced_flag, voiced_probs = librosa.pyin(y, fmin=75, fmax=300)
@@ -94,8 +85,6 @@ def extract():
 
     # Get MIME type and file extension
     mime_type, _ = mimetypes.guess_type(file_path)
-
-    print("Upload Type : " + mime_type + "\n")
     file_extension = os.path.splitext(file_path)[1].lower()
 
     # If the file is not WAV, return an error with the detected MIME type
@@ -105,22 +94,9 @@ def extract():
               f"detected_mime: {mime_type or 'Unknown'}\n"
               f"file_extension: {file_extension}\n")
 
-    wav_path = os.path.splitext(file_path)[0] + ".wav"
-    try:
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", file_path, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", wav_path],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-    except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"FFmpeg conversion failed", "details": e.stderr.decode()}), 501
 
-    print("Converted to .wav\n")
-
-    features = extract_parkinsons_features_librosa(wav_path)
+    features = extract_parkinsons_features_librosa(file_path)
     os.remove(file_path)
-    os.remove(wav_path)  # Delete file after processing
 
     return jsonify(features)
 
