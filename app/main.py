@@ -11,6 +11,7 @@ app = Flask(__name__)
 def extract_parkinsons_features(file_path):
     try:
         sound = parselmouth.Sound(file_path)
+        print("extraction began")
         pitch = sound.to_pitch()
 
         jitter_local = sound.to_jitter(method="local")
@@ -55,7 +56,7 @@ def extract_parkinsons_features(file_path):
         return {"error": str(e)}
 
 
-  # ✅ Create uploads folder if not exists
+# ✅ Create uploads folder if not exists
 
 
 @app.route("/extract", methods=["POST"])
@@ -69,20 +70,18 @@ def extract():
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
 
-    print("till here \n")
-
     # Get MIME type and file extension
     mime_type, _ = mimetypes.guess_type(file_path)
+
+    print("Upload Type : " + mime_type + "\n")
     file_extension = os.path.splitext(file_path)[1].lower()
 
     # If the file is not WAV, return an error with the detected MIME type
     if file_extension not in [".wav", ".mp3", ".m4a", ".3gp"]:
-        return jsonify({
-            "error": "Unsupported file format",
-            "filename": file.filename,
-            "detected_mime": mime_type or "Unknown",
-            "file_extension": file_extension
-        }), 400
+        print("error:  Unsupported file format\n"
+              "filename: file.filename\n"
+              f"detected_mime: {mime_type} or Unknown\n"
+              "file_extension: file_extension\n")
 
     wav_path = os.path.splitext(file_path)[0] + ".wav"
     try:
@@ -95,6 +94,7 @@ def extract():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"FFmpeg conversion failed", "details": e.stderr.decode()}), 501
 
+    print("Converted to .wav\n")
 
     features = extract_parkinsons_features(wav_path)
     os.remove(file_path)
