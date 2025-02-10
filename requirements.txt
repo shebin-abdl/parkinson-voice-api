@@ -2,6 +2,3 @@ Flask
 numpy
 praat-parselmouth
 gunicorn
-subprocess
-os
-mimetypes
