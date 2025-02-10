@@ -62,6 +62,10 @@ def extract():
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
 
+    if not file.filename.endswith(".wav"):
+        return jsonify({"error": "Only WAV files are supported"}), 400
+
+
     features = extract_parkinsons_features(file_path)
     os.remove(file_path)  # Delete file after processing
 
