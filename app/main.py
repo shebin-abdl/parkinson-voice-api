@@ -61,6 +61,7 @@ def extract():
     file = request.files["file"]
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
+    print("Received file:", file.filename, "MIME Type:", file.mimetype)
 
     if not file.filename.endswith(".wav"):
         return jsonify({"error": "Only WAV files are supported"}), 400
