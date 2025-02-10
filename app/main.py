@@ -69,6 +69,8 @@ def extract():
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
 
+    print("till here \n")
+
     # Get MIME type and file extension
     mime_type, _ = mimetypes.guess_type(file_path)
     file_extension = os.path.splitext(file_path)[1].lower()
@@ -91,8 +93,7 @@ def extract():
             stderr=subprocess.PIPE
         )
     except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"FFmpeg conversion failed: {e.stderr.decode()}"}), 501
-
+        return jsonify({"error": f"FFmpeg conversion failed", "details": e.stderr.decode()}), 501
 
 
     features = extract_parkinsons_features(wav_path)
