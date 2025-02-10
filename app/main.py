@@ -51,13 +51,15 @@ def extract_parkinsons_features(file_path):
     except Exception as e:
         return {"error": str(e)}
 
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ✅ Create uploads folder if not exists
 @app.route("/extract", methods=["POST"])
 def extract():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
     file = request.files["file"]
-    file_path = f"uploads/{file.filename}"
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
 
     features = extract_parkinsons_features(file_path)
