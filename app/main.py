@@ -55,12 +55,13 @@ def extract_parkinsons_features(file_path):
         return {"error": str(e)}
 
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ✅ Create uploads folder if not exists
+  # ✅ Create uploads folder if not exists
 
 
 @app.route("/extract", methods=["POST"])
 def extract():
+    UPLOAD_FOLDER = "uploads"
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -90,10 +91,9 @@ def extract():
             stderr=subprocess.PIPE
         )
     except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"FFmpeg conversion failed: {e.stderr.decode()}"}), 500
+        return jsonify({"error": f"FFmpeg conversion failed: {e.stderr.decode()}"}), 501
 
-    if not file.filename.endswith(".wav"):
-        return jsonify({"error": "Only WAV files are supported"}), 400
+
 
     features = extract_parkinsons_features(wav_path)
     os.remove(file_path)
