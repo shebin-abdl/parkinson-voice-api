@@ -1,4 +1,3 @@
 Flask
-numpy
+praat-parselmouth
 gunicorn
-librosa
