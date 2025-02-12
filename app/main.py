@@ -66,7 +66,7 @@ def extract_parkinsons_features(file_path):
         }
 
         extracted_features = {
-            key: float(features[value].values[0]) for key, value in selected_features.items()
+            key: float(features[value].values[0].item()) for key, value in selected_features.items()
         }
 
         # Compute NHR as the inverse of HNR
@@ -83,9 +83,9 @@ def extract_parkinsons_features(file_path):
             pitch_features = np.array([])
 
             # Compute RPDE, DFA, PPE
-        extracted_features["RPDE"] = compute_rpde(pitch_features)
-        extracted_features["DFA"] = compute_dfa(pitch_features)
-        extracted_features["PPE"] = compute_ppe(pitch_features)
+        extracted_features["RPDE"] = float(compute_rpde(pitch_features))
+        extracted_features["DFA"] = float(compute_dfa(pitch_features))
+        extracted_features["PPE"] = float(compute_ppe(pitch_features))
 
         return extracted_features
 
