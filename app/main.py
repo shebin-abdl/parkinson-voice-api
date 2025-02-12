@@ -69,17 +69,25 @@ def extract_parkinsons_features(file_path):
             key: float(features[value].values[0]) for key, value in selected_features.items()
         }
 
+        # Compute NHR as the inverse of HNR
+        extracted_features["NHR"] = 1 / extracted_features["HNR"] if extracted_features["HNR"] != 0 else 0
+
         # Extract pitch data for nonlinear measures
         # Extract pitch data from LLD level
-        pitch_features = smile_pitch.process_file(file_path)[
-            ["F0final_sma", "voicingFinalUnclipped_sma"]].values.flatten()
+        # Extract pitch data for nonlinear measures
+        pitch_data = smile_pitch.process_file(file_path)
 
-        # Compute RPDE, DFA, PPE
+        if "F0final_sma" in pitch_data.columns and "voicingFinalUnclipped_sma" in pitch_data.columns:
+            pitch_features = pitch_data[["F0final_sma", "voicingFinalUnclipped_sma"]].values.flatten()
+        else:
+            pitch_features = np.array([])
+
+            # Compute RPDE, DFA, PPE
         extracted_features["RPDE"] = compute_rpde(pitch_features)
         extracted_features["DFA"] = compute_dfa(pitch_features)
         extracted_features["PPE"] = compute_ppe(pitch_features)
 
-        return jsonify({"features": extracted_features})
+        return extracted_features
 
     except Exception as e:
         return {"error": f"Processing error: {e}"}
@@ -106,7 +114,7 @@ def extract():
     os.remove(file_path)
 
     # Handle errors from feature extraction
-    if isinstance(features, dict):
+    if "error" in features:
         return jsonify(features), 400
 
     return jsonify({"features": features})  # Now structured and serializable
