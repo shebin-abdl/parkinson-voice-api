@@ -17,25 +17,26 @@ smile = opensmile.Smile(
 
 def extract_parkinsons_features(file_path):
     try:
-        # Extract features using OpenSMILE
-        features = smile.process_file(file_path)
-        features_dict = features.iloc[0].to_dict()
+        selected_features = [
+            "jitterLocal_sma_amean",
+            "jitterDDP_sma_amean",
+            "jitterLocal_sma_stddev",
+            "jitterDDP_sma_stddev",
+            "shimmerLocal_sma_amean",
+            "shimmerLocal_sma_stddev",
+            "logHNR_sma_amean",
+            "logHNR_sma_stddev"
+        ]
 
-        # Filter only relevant Parkinson’s features
-        required_features = {
-            "Jitter(%)": features_dict.get("jitterLocal_sma"),
-            "Jitter(Abs)": features_dict.get("jitterDDP_sma"),
-            "Jitter:RAP": features_dict.get("jitterRap_sma"),
-            "Jitter:PPQ5": features_dict.get("jitterPpq5_sma"),
-            "Shimmer": features_dict.get("shimmerLocal_sma"),
-            "Shimmer(dB)": features_dict.get("shimmerLocalDb_sma"),
-            "Shimmer:APQ3": features_dict.get("shimmerApq3_sma"),
-            "Shimmer:APQ5": features_dict.get("shimmerApq5_sma"),
-            "Shimmer:APQ11": features_dict.get("shimmerApq11_sma"),
-            "HNR": features_dict.get("HNRdB_sma")
-        }
+        def extract_features(file_path):
+            features = smile.process_file(file_path)
+            return features[selected_features].values[0]
 
-        return required_features
+        file_path = "test_audio.wav"
+        extracted_features = extract_features(file_path)
+        print(extracted_features)
+
+        return extracted_features
     except Exception as e:
         return {"error": f"Processing error: {e}"}
 
