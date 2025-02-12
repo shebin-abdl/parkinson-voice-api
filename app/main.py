@@ -79,7 +79,7 @@ def extract_parkinsons_features(file_path):
         extracted_features["DFA"] = compute_dfa(pitch_features)
         extracted_features["PPE"] = compute_ppe(pitch_features)
 
-        return extracted_features
+        return jsonify({"features": extracted_features})
 
     except Exception as e:
         return {"error": f"Processing error: {e}"}
