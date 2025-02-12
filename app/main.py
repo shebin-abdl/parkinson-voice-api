@@ -27,13 +27,8 @@ def extract_parkinsons_features(file_path):
             "logHNR_sma_amean",
             "logHNR_sma_stddev"
         ]
-
-        def extract_features(file_path):
-            features = smile.process_file(file_path)
-            return features[selected_features].values[0]
-
-        file_path = "test_audio.wav"
-        extracted_features = extract_features(file_path)
+        features = smile.process_file(file_path)
+        extracted_features = features[selected_features].values[0]
         print(extracted_features)
 
         return extracted_features
