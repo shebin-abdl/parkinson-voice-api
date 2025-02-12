@@ -28,10 +28,12 @@ def extract_parkinsons_features(file_path):
             "logHNR_sma_stddev"
         ]
         features = smile.process_file(file_path)
-        extracted_features = features[selected_features].values[0]
+
+        # Convert extracted features to a JSON-friendly format
+        extracted_features = features[selected_features].values[0].tolist()
         print(extracted_features)
 
-        return extracted_features
+        return extracted_features  # Now JSON serializable
     except Exception as e:
         return {"error": f"Processing error: {e}"}
 
@@ -55,8 +57,12 @@ def extract():
     features = extract_parkinsons_features(file_path)
     os.remove(file_path)
 
-    return jsonify(features)
+    # Handle errors from feature extraction
+    if isinstance(features, dict):
+        return jsonify(features), 400
+
+    return jsonify({"features": features})  # Now structured and serializable
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Use Render's assigned port
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
