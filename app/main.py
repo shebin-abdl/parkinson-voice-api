@@ -2,7 +2,9 @@ import os
 import mimetypes
 from flask import Flask, request, jsonify
 import opensmile
-import pandas as pd
+import scipy.stats
+import nolds
+import numpy as np
 
 app = Flask(__name__)
 
@@ -15,27 +17,73 @@ smile = opensmile.Smile(
     feature_level=opensmile.FeatureLevel.Functionals,
 )
 
+smile_pitch = opensmile.Smile(
+    feature_set=opensmile.FeatureSet.ComParE_2016,
+    feature_level=opensmile.FeatureLevel.LowLevelDescriptors,  # Corrected!
+)
+
+def compute_rpde(signal):
+    """ Compute Recurrence Period Density Entropy (RPDE) """
+    signal = signal[signal > 0]  # Remove unvoiced parts
+    if len(signal) < 2:
+        return 0  # Return default if data is insufficient
+    return scipy.stats.entropy(np.histogram(signal, bins=10)[0])
+
+
+def compute_dfa(signal):
+    """ Compute Detrended Fluctuation Analysis (DFA) """
+    if len(signal) < 10:
+        return 0  # Default if data is insufficient
+    return nolds.dfa(signal)
+
+
+def compute_ppe(signal):
+    """ Compute Pitch Period Entropy (PPE) """
+    signal = signal[signal > 0]  # Remove unvoiced parts
+    if len(signal) < 2:
+        return 0  # Default if data is insufficient
+    return scipy.stats.entropy(signal)
+
+
 def extract_parkinsons_features(file_path):
     try:
-        selected_features = [
-            "jitterLocal_sma_amean",
-            "jitterDDP_sma_amean",
-            "jitterLocal_sma_stddev",
-            "jitterDDP_sma_stddev",
-            "shimmerLocal_sma_amean",
-            "shimmerLocal_sma_stddev",
-            "logHNR_sma_amean",
-            "logHNR_sma_stddev"
-        ]
+        # Extract features using OpenSMILE
         features = smile.process_file(file_path)
 
-        # Convert extracted features to a JSON-friendly format
-        extracted_features = features[selected_features].values[0].tolist()
-        print(extracted_features)
+        # Selected feature mapping
+        selected_features = {
+            "Jitter(%)": "jitterLocal_sma_amean",
+            "Jitter:PPQ5": "jitterLocal_sma_rqmean",
+            "Jitter:DDP": "jitterLocal_sma_amean",
+            "Shimmer": "shimmerLocal_sma_amean",
+            "Shimmer(dB)": "shimmerLocal_sma_amean",
+            "Shimmer:APQ3": "shimmerLocal_sma_quartile1",
+            "Shimmer:APQ5": "shimmerLocal_sma_quartile2",
+            "Shimmer:APQ11": "shimmerLocal_sma_quartile3",
+            "Shimmer:DDA": "shimmerLocal_sma_de_amean",
+            "NHR": "logHNR_sma_amean",  # Inverse of HNR
+            "HNR": "logHNR_sma_amean",
+        }
 
-        return extracted_features  # Now JSON serializable
+        extracted_features = {
+            key: float(features[value].values[0]) for key, value in selected_features.items()
+        }
+
+        # Extract pitch data for nonlinear measures
+        # Extract pitch data from LLD level
+        pitch_features = smile_pitch.process_file(file_path)[
+            ["F0final_sma", "voicingFinalUnclipped_sma"]].values.flatten()
+
+        # Compute RPDE, DFA, PPE
+        extracted_features["RPDE"] = compute_rpde(pitch_features)
+        extracted_features["DFA"] = compute_dfa(pitch_features)
+        extracted_features["PPE"] = compute_ppe(pitch_features)
+
+        return extracted_features
+
     except Exception as e:
         return {"error": f"Processing error: {e}"}
+
 
 @app.route("/extract", methods=["POST"])
 def extract():
@@ -62,6 +110,7 @@ def extract():
         return jsonify(features), 400
 
     return jsonify({"features": features})  # Now structured and serializable
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
