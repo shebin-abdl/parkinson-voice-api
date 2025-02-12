@@ -1,8 +1,8 @@
-Flask
-numpy
-pandas
+flask
+gunicorn
 opensmile
+numpy
 scipy
 nolds
+pandas
 scikit-learn
-
