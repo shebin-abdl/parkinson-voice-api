@@ -1,3 +1,4 @@
-Flask
-praat-parselmouth
-gunicorn
+flask
+opensmile
+pandas
+numpy

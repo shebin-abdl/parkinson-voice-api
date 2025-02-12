@@ -1,56 +1,43 @@
 import os
 import mimetypes
 from flask import Flask, request, jsonify
-import parselmouth
+import opensmile
+import pandas as pd
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Initialize OpenSMILE with Parkinson’s-related features
+smile = opensmile.Smile(
+    feature_set=opensmile.FeatureSet.ComParE_2016,
+    feature_level=opensmile.FeatureLevel.Functionals,
+)
 
-def extract_parkinsons_features_parselmouth(file_path):
+def extract_parkinsons_features(file_path):
     try:
-        sound = parselmouth.Sound(file_path)
-        pitch = sound.to_pitch()
+        # Extract features using OpenSMILE
+        features = smile.process_file(file_path)
+        features_dict = features.iloc[0].to_dict()
 
-        # Jitter Measures
-        jitter = pitch.get_jitter(method="local") * 100
-        jitter_abs = pitch.get_jitter(method="local_absolute")
-        jitter_rap = pitch.get_jitter(method="rap")
-        jitter_ppq5 = pitch.get_jitter(method="ppq5")
-        jitter_ddp = pitch.get_jitter(method="ddp")
-
-        # Shimmer Measures
-        shimmer = pitch.get_shimmer(method="local") * 100
-        shimmer_db = pitch.get_shimmer(method="local_dB")
-        shimmer_apq3 = pitch.get_shimmer(method="apq3")
-        shimmer_apq5 = pitch.get_shimmer(method="apq5")
-        shimmer_apq11 = pitch.get_shimmer(method="apq11")
-        shimmer_dda = pitch.get_shimmer(method="dda")
-
-        # Harmonics-to-Noise Ratio
-        hnr = pitch.get_hnr()
-        nhr = 1 / hnr if hnr != 0 else 0
-
-        return {
-            "Jitter(%)": jitter,
-            "Jitter(Abs)": jitter_abs,
-            "Jitter:RAP": jitter_rap,
-            "Jitter:PPQ5": jitter_ppq5,
-            "Jitter:DDP": jitter_ddp,
-            "Shimmer": shimmer,
-            "Shimmer(dB)": shimmer_db,
-            "Shimmer:APQ3": shimmer_apq3,
-            "Shimmer:APQ5": shimmer_apq5,
-            "Shimmer:APQ11": shimmer_apq11,
-            "Shimmer:DDA": shimmer_dda,
-            "HNR": hnr,
-            "NHR": nhr
+        # Filter only relevant Parkinson’s features
+        required_features = {
+            "Jitter(%)": features_dict.get("jitterLocal_sma"),
+            "Jitter(Abs)": features_dict.get("jitterDDP_sma"),
+            "Jitter:RAP": features_dict.get("jitterRap_sma"),
+            "Jitter:PPQ5": features_dict.get("jitterPpq5_sma"),
+            "Shimmer": features_dict.get("shimmerLocal_sma"),
+            "Shimmer(dB)": features_dict.get("shimmerLocalDb_sma"),
+            "Shimmer:APQ3": features_dict.get("shimmerApq3_sma"),
+            "Shimmer:APQ5": features_dict.get("shimmerApq5_sma"),
+            "Shimmer:APQ11": features_dict.get("shimmerApq11_sma"),
+            "HNR": features_dict.get("HNRdB_sma")
         }
+
+        return required_features
     except Exception as e:
         return {"error": f"Processing error: {e}"}
-
 
 @app.route("/extract", methods=["POST"])
 def extract():
@@ -69,11 +56,11 @@ def extract():
         os.remove(file_path)
         return jsonify({"error": f"Unsupported format: {mime_type or 'Unknown'} ({file_extension})"}), 400
 
-    features = extract_parkinsons_features_parselmouth(file_path)
+    features = extract_parkinsons_features(file_path)
     os.remove(file_path)
 
     return jsonify(features)
 
-
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Use Render's assigned port
+    app.run(host="0.0.0.0", port=port)
