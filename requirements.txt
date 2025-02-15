@@ -6,3 +6,4 @@ scipy
 nolds
 pandas
 scikit-learn
+ffmpeg-python

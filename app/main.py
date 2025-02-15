@@ -1,5 +1,7 @@
 import os
 import mimetypes
+import subprocess
+
 from flask import Flask, request, jsonify
 import opensmile
 import scipy.stats
@@ -21,6 +23,37 @@ smile_pitch = opensmile.Smile(
     feature_set=opensmile.FeatureSet.ComParE_2016,
     feature_level=opensmile.FeatureLevel.LowLevelDescriptors,  # Corrected!
 )
+
+
+def get_audio_properties(file_path):
+    """Check sample rate and number of channels using ffprobe."""
+    command = [
+        "ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries",
+        "stream=sample_rate,channels", "-of", "csv=p=0", file_path
+    ]
+    try:
+        output = subprocess.check_output(command).decode().strip()
+        sample_rate, channels = map(int, output.split(","))
+        return sample_rate, channels
+    except Exception:
+        return None, None  # Default in case of error
+
+
+def resample_audio(input_path, output_path):
+    """Resample audio to 16kHz mono if needed."""
+    sample_rate, channels = get_audio_properties(input_path)
+
+    # Skip resampling if already 16kHz mono
+    if sample_rate == 16000 and channels == 1:
+        return input_path  # Return the original file
+
+    command = [
+        "ffmpeg", "-i", input_path, "-ar", "16000", "-ac", "1", "-y", output_path
+    ]
+    subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    return output_path if os.path.exists(output_path) else None
+
 
 def compute_rpde(signal):
     """ Compute Recurrence Period Density Entropy (RPDE) """
@@ -46,9 +79,18 @@ def compute_ppe(signal):
 
 
 def extract_parkinsons_features(file_path):
+    """Extract Parkinson's features after resampling audio."""
+    resampled_path = os.path.join(UPLOAD_FOLDER, "resampled_16k.wav")
+
+    # Resample first
+    processed_file = resample_audio(file_path, resampled_path)
+
+    if not processed_file:
+        return {"error": "Resampling failed"}
+
     try:
         # Extract features using OpenSMILE
-        features = smile.process_file(file_path)
+        features = smile.process_file(processed_file)
 
         # Selected feature mapping
         selected_features = {
@@ -75,7 +117,7 @@ def extract_parkinsons_features(file_path):
         # Extract pitch data for nonlinear measures
         # Extract pitch data from LLD level
         # Extract pitch data for nonlinear measures
-        pitch_data = smile_pitch.process_file(file_path)
+        pitch_data = smile_pitch.process_file(processed_file)
 
         if "F0final_sma" in pitch_data.columns and "voicingFinalUnclipped_sma" in pitch_data.columns:
             pitch_features = pitch_data[["F0final_sma", "voicingFinalUnclipped_sma"]].values.flatten()
